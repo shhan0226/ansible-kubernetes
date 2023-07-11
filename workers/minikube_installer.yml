@@ -1,0 +1,42 @@
+---
+- name: install minikube (workers) !!!
+  hosts: workers
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+
+  - name: Download Minikube binary
+    command: "curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-arm64"
+    args:
+      chdir: "/tmp"
+      warn: false
+    when: "CPU_ARCH == 'aarch64'"
+
+  - name: Install Minikube binary
+    command: "install minikube-linux-arm64 /usr/local/bin/minikube"
+    args:
+      chdir: "/tmp"
+      warn: false
+    when: "CPU_ARCH == 'aarch64'"
+
+  - name: Download Minikube binary
+    command: "curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+    args:
+      chdir: "/tmp"
+      warn: false
+    when: "CPU_ARCH == 'x86_64'"
+
+  - name: Install Minikube binary
+    command: "install minikube-linux-amd64 /usr/local/bin/minikube"
+    args:
+      chdir: "/tmp"
+      warn: false
+    when: "CPU_ARCH == 'x86_64'"
+
+
+
+
+
+
+

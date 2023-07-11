@@ -1,0 +1,24 @@
+---
+- name: 호스트 이름 변경
+  hosts: workers
+  become: yes
+  gather_facts: yes
+  any_errors_fatal: true
+  
+  tasks:
+    - name: Check IP address
+      command: hostname -I
+      register: ip_address
+      changed_when: false
+      check_mode: no
+
+    - name: Change hostname
+      hostname:
+        name: "{{ WORKER1_HOSTNAME }}"
+      when: ip_address.stdout.find(WORKER1_IP) != -1
+
+
+    - name: Change hostname
+      hostname:
+        name: "{{ WORKER2_HOSTNAME }}"
+      when: ip_address.stdout.find(WORKER2_IP) != -1

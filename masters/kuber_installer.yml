@@ -1,0 +1,94 @@
+---
+- name: install kubernetes !!!
+  hosts: masters
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+
+    - name: Load kernel modules
+      become: yes
+      copy:
+        content: |
+          br_netfilter
+        dest: /etc/modules-load.d/k8s.conf
+
+    - name: Configure sysctl for Kubernetes
+      become: yes
+      copy:
+        content: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+        dest: /etc/sysctl.d/k8s.conf
+
+    - name: Update sysctl configuration
+      command: sysctl --system
+      changed_when: false
+
+    - name: Update package cache
+      become: yes
+      apt:
+        update_cache: yes
+
+    - name: Check if docker.gpg file exists
+      stat:
+        path: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+      register: kubernetes_gpg_file
+
+    - name: Add Kubernetes apt-key
+      shell: |
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+      args:
+        warn: false
+      when: not kubernetes_gpg_file.stat.exists
+
+    - name: Add Kubernetes repository      
+      shell: |
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      when: not kubernetes_gpg_file.stat.exists
+
+    - name: Update package cache
+      become: yes
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        install_recommends: no
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+        - bash-completion
+
+    - name: Hold package versions
+      become: yes
+      command: apt-mark hold kubelet kubeadm kubectl
+
+    - name: Remove containerd configuration
+      become: yes
+      file:
+        path: /etc/containerd/config.toml
+        state: absent
+
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+
+    - name: Configure kubectl auto-completion
+      become: yes
+      become_method: sudo
+      shell: |
+        kubectl completion bash
+      register: kubectl_bash_file  
+
+    - name: Save kubectl auto-completion to file
+      become: yes
+      become_method: sudo
+      copy:
+        content: "{{ kubectl_bash_file.stdout }}"
+        dest: /etc/bash_completion.d/kubectl
+

@@ -1,0 +1,28 @@
+---
+- name: install kubernetes Clustering (workers) !!!
+  hosts: workers
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+
+  - name: Check if join_script file exists
+    stat:
+      path: /home/{{ USER }}/join_script.sh
+    register: join_script_file
+
+  - name: Copy join script to remote host
+    copy:
+      src: "{{ HOME_DIR }}/join_script.sh"
+      dest: /home/{{ USER }}/join_script.sh
+      mode: 0755
+    when: not join_script_file.stat.exists
+
+  - name: Execute join script on remote host
+    become: yes
+    become_user: root
+    shell: /home/{{ USER }}/join_script.sh
+    register: joined_output
+
+  - debug:
+      var: joined_output.stdout_lines

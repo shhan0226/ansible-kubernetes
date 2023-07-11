@@ -1,0 +1,202 @@
+---
+- name: install docker (workers) !!!
+  hosts: workers
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+
+    - name: Create sudoers file for account
+      file:
+        path: "/etc/sudoers.d/{{ USER }}"
+        state: touch
+        mode: '0440'
+
+    - name: Add sudoers entry for account
+      lineinfile:
+        path: /etc/sudoers.d/{{ USER }}
+        line: '{{ USER }} ALL=(ALL:ALL) NOPASSWD:ALL'
+        mode: 0440
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        install_recommends: no
+      loop:
+        - curl
+        - apt-transport-https
+        - ca-certificates
+        - gnupg-agent
+        - software-properties-common
+        - gnupg2
+        - lsb-release
+
+    - name: Check if docker.gpg file exists
+      stat:
+        path: /etc/apt/keyrings/docker.gpg
+      register: docker_gpg_file
+
+    - name: Create keyrings directory
+      become: true
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      when: not docker_gpg_file.stat.exists
+
+    - name: GPG 키 다운로드
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /tmp/docker.gpg
+        force: true
+      when: not docker_gpg_file.stat.exists
+
+    - name: GPG 키 저장
+      become: yes
+      shell: |
+        gpg --dearmor -o /etc/apt/keyrings/docker.gpg /tmp/docker.gpg
+      when: not docker_gpg_file.stat.exists
+
+    - name: Set permissions for Docker GPG key
+      become: yes
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        mode: "a+r"
+
+    - name: Configure Docker APT repository
+      shell: |
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Get Docker CE Version String
+      shell: apt-cache madison docker-ce | awk 'NR==1 { print $3 }'
+      register: version_output
+
+    - name: Print Version String
+      debug:
+        var: version_output.stdout
+
+    - name: Install Docker CE and Related Packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        install_recommends: no
+      loop:
+          - docker-ce={{ version_output.stdout }}
+          - docker-ce-cli={{ version_output.stdout }}
+          - containerd.io
+          - docker-compose-plugin
+          - jq
+
+    - name: Disable Swap
+      command: swapoff -a
+
+    - name: Comment Swap Entry in /etc/fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^/swap'
+        line: '#/swap'
+
+    - name: Set permissions for Docker GPG key
+      become: yes
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        mode: "a+r"
+
+    - name: Add current user to Docker group
+      become: yes
+      command: usermod -aG docker {{ USER }}
+
+    - name: Change ownership of Docker socket
+      become: yes
+      file:
+        path: /var/run/docker.sock
+        owner: root
+        group: docker
+
+    - name: Set permissions for Docker socket
+      become: yes
+      file:
+        path: /var/run/docker.sock
+        mode: "0666"
+
+    - name: Restart Docker service
+      shell: systemctl restart docker
+
+    - name: Check if daemon.json file exists
+      stat:
+        path: /etc/docker/daemon.json
+      register: daemon_json_file
+
+
+    - name: Create and configure daemon.json
+      become: yes
+      file:
+        path: /etc/docker/daemon.json
+        state: touch
+        owner: root
+        group: root
+        mode: '0644'
+      when: not daemon_json_file.stat.exists
+
+    - name: Add content to daemon.json
+      become: yes
+      blockinfile:
+        path: /etc/docker/daemon.json
+        block: |
+          {
+            "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "storage-driver": "overlay2"
+          }
+        marker: ""
+      when: not daemon_json_file.stat.exists
+
+    - name: Enable Docker service
+      service:
+        name: docker
+        enabled: yes
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+        state: restarted
+        name: docker
+
+    - name: Get the latest Docker Compose version
+      shell: |
+        KVERSION=$(curl --silent https://api.github.com/repos/docker/compose/releases/latest | jq .name -r)
+        echo $KVERSION
+      register: compose_version
+
+    - name: Download and install Docker Compose
+      shell: |
+        KVERSION={{ compose_version.stdout }}
+        sudo curl -L "https://github.com/docker/compose/releases/download/${KVERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+
+    - name: Check Docker Compose version
+      shell: docker-compose -v
+      register: compose_check
+
+    - name: Print Docker Compose version
+      debug:
+        var: compose_check.stdout
+
+    - name: Restart Docker service
+      service:
+        name: docker
+        state: restarted

@@ -1,0 +1,47 @@
+---
+- name: install kustomize (workers) !!! 
+  hosts: workers
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+
+  - name: Check if Kustomize file exists
+    stat:
+      path: /home/{{ USER }}/install_kustomize.sh
+    register: Kustomize_file
+
+  - name: Download Kustomize install script
+    command: wget https://raw.githubusercontent.com/kubernetes-sigs/kustomize/kustomize/{{ KUSTOMIZE_VERSION }}/hack/install_kustomize.sh -P /home/{{ USER }}
+    args:
+      warn: false
+    when: not Kustomize_file.stat.exists
+
+  - name: Modify install_kustomize.sh
+    become: yes
+    replace:
+      path: /home/{{ USER }}/install_kustomize.sh
+      regexp: 'arm64\)'
+      replace: 'aarch64)'
+
+  - name: Set permissions for Docker GPG key
+    become: yes
+    file:
+      path: /home/{{ USER }}/install_kustomize.sh
+      mode: "0755"
+
+  - name: Remove existing kustomize file
+    become: yes
+    file:
+      path: /home/vraptor/kustomize
+      state: absent
+
+  - name: Run install_kustomize.sh script
+    become: yes    
+    shell : |
+      /home/{{ USER }}/install_kustomize.sh
+
+  - name: Move kustomize to /usr/local/bin
+    become: yes    
+    shell : |
+      install -o root -g root -m 0755 kustomize /usr/local/bin/kustomize

@@ -1,0 +1,18 @@
+---
+- name: 원격 서버 업데이트
+  hosts: workers
+  become: yes
+  any_errors_fatal: true
+  
+  tasks:
+    - name: 패키지 정보 업데이트 <APT UPDATE>
+      apt:
+        update_cache: yes
+
+    - name: 패키지 업그레이드 <APT UPGRADE>
+      apt:
+        upgrade: safe
+        autoremove: yes
+
+
+

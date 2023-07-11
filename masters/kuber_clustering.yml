@@ -1,0 +1,95 @@
+---
+- name: install kubernetes Clustering !!!
+  hosts: masters
+  become: yes
+  any_errors_fatal: true
+
+  tasks:
+  - name: Run kubeadm init
+    become: yes
+    command: "kubeadm init --pod-network-cidr={{ CNI_IP }} --control-plane-endpoint={{ MASTER_IP }} --upload-certs"
+    register: init_file
+
+  - debug:
+      var: init_file.stdout_lines
+
+  - name: Set up kubeconfig for current user
+    become: yes
+    file:
+      path: "/home/{{ USER }}/.kube"
+      state: directory
+
+  - name: Copy admin.conf to current user's kubeconfig
+    become: yes
+    command: "cp -i /etc/kubernetes/admin.conf /home/{{ USER }}/.kube/config"
+
+  - name: Change ownership of kubeconfig
+    become: yes
+    file:
+      path: "/home/{{ USER }}/.kube/config"
+      owner: "{{ USER }}"
+      group: "{{ USER }}"
+      mode: "0644"
+
+  - name: Check if Calico YAML file exists
+    stat:
+      path: /home/{{ USER }}/calico.yaml
+    register: Calico_file
+
+  - name: Download Calico YAML manifest
+    get_url:
+      url: "https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml"
+      dest: "/home/{{ USER }}/calico.yaml"
+    when: not Calico_file.stat.exists
+
+  - name: Apply Calico YAML manifest
+    become: yes
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    command: "kubectl apply -f calico.yaml"
+    args:
+      chdir: "/home/{{ USER }}"
+
+  - name: Get pods in all namespaces
+    become: yes
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    command: "kubectl get pods --all-namespaces"
+    register: pod_output
+
+  - debug:
+      var: pod_output.stdout_lines
+
+  - name: Get nodes information
+    become: yes
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    command: "kubectl get nodes -o wide"
+    register: node_output    
+
+  - debug:
+      var: node_output.stdout_lines
+
+  - name: Get join information
+    become: yes
+    environment:
+      KUBECONFIG: "/etc/kubernetes/admin.conf"
+    command: "kubeadm token create --print-join-command"
+    register: join_output
+
+  - debug:
+      var: join_output.stdout_lines
+
+  - name: Save join command to script
+    become: yes
+    lineinfile:
+      dest: "/home/{{ USER }}/join_script.sh"
+      line: "{{ item }}"
+      create: yes
+    with_items: "{{ join_output.stdout_lines }}"
+
+  - name: Copy join script to local machine
+    fetch:
+      src: "/home/{{ USER }}/join_script.sh"
+      dest: "{{ HOME_DIR }}/"
+      flat: yes
