@@ -51,7 +51,7 @@
     ```
 
 ### 2. Run
-- start ansible
+- ansible start
     ```
     ./01_ssh.sh
     ./02_ping.sh

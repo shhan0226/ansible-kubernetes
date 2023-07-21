@@ -1,0 +1,9 @@
+[all:vars]
+ansible_user=vraptor
+ansible_password=vraptor
+ansible_become_password=vraptor
+USER=vraptor
+HOME_DIR=/data/Dropbox/Workspaces/VScode/autokuber
+
+[worker]
+192.168.0.38
