@@ -3,26 +3,26 @@ ansible_user=vraptor
 ansible_password=vraptor
 ansible_become_password=vraptor
 TARGET=all
-CPU_ARCH=x86_64
+CPU_ARCH=aarch64
 KUSTOMIZE_VERSION=v4.5.7
 CNI_IP=192.168.0.0/16
-HOME_DIR=/data/Dropbox/Workspaces/VScode/autokuber
+HOME_DIR=/data/Dropbox/Workspaces/VScode/ansible-kubernetes
 
 [masters]
-192.168.0.35
+10.0.10.11
 
 [masters:vars]
 USER=vraptor
-MASTER_IP=192.168.0.35
-MASTER_HOSTNAME=nano-v1
+MASTER_IP=10.0.10.11
+MASTER_HOSTNAME=master1
 
 [workers]
-192.168.0.36
-192.168.0.37
+10.0.10.12
+10.0.10.13
 
 [workers:vars]
 USER=vraptor
-WORKER1_IP=192.168.0.36
-WORKER1_HOSTNAME=nano-v2
-WORKER2_IP=192.168.0.37
-WORKER2_HOSTNAME=nano-v3
+WORKER1_IP=10.0.10.12
+WORKER1_HOSTNAME=worker1
+WORKER2_IP=10.0.10.13
+WORKER2_HOSTNAME=worker2
