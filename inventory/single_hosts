@@ -3,7 +3,15 @@ ansible_user=vraptor
 ansible_password=vraptor
 ansible_become_password=vraptor
 USER=vraptor
-HOME_DIR=/data/Dropbox/Workspaces/VScode/autokuber
+HOME_DIR=/data/Dropbox/Workspaces/VScode/ansible-kubernetes
+KUSTOMIZE_VERSION=v4.5.7
 
 [worker]
-192.168.0.38
+192.168.0.39
+
+[worker:vars]
+USER=vraptor
+WORKER1_IP=192.168.0.39
+WORKER1_HOSTNAME=worker3
+WORKER2_IP=default('default_ip')
+

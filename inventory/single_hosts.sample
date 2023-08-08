@@ -4,6 +4,14 @@ ansible_password=vraptor
 ansible_become_password=vraptor
 USER=USER_SET
 HOME_DIR=HOME_DIR_SET
+KUSTOMIZE_VERSION=KUSTOMIZE_VERSION_SET
 
 [worker]
 WORKER_IP_SET
+
+[worker:vars]
+USER=USER_SET
+WORKER1_IP=WORKER_IP_SET
+WORKER1_HOSTNAME=WORKER_HOSTNAME_SET
+WORKER2_IP=default('default_ip')
+

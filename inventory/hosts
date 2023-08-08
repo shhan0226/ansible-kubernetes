@@ -2,18 +2,18 @@
 ansible_user=vraptor
 ansible_password=vraptor
 ansible_become_password=vraptor
-TARGET=masters
+TARGET=all
 CPU_ARCH=aarch64
 KUSTOMIZE_VERSION=v4.5.7
 CNI_IP=172.16.0.0/16
 HOME_DIR=/data/Dropbox/Workspaces/VScode/ansible-kubernetes
 
 [masters]
-192.168.3.28
+192.168.0.36
 
 [masters:vars]
 USER=vraptor
-MASTER_IP=192.168.3.28
+MASTER_IP=192.168.0.36
 MASTER_HOSTNAME=master1
 
 [workers]

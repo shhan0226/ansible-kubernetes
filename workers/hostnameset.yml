@@ -17,7 +17,6 @@
         name: "{{ WORKER1_HOSTNAME }}"
       when: ip_address.stdout.find(WORKER1_IP) != -1
 
-
     - name: Change hostname
       hostname:
         name: "{{ WORKER2_HOSTNAME }}"
