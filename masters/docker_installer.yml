@@ -117,6 +117,12 @@
       become: yes
       command: usermod -aG docker {{ USER }}
 
+    - name: Ensure Docker service is running and enabled
+      service:
+        name: docker
+        state: restarted
+        enabled: yes
+
     - name: Change ownership of Docker socket
       become: yes
       file:
